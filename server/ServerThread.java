@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.io.*;
 import java.net.*;
 import java.util.Objects;
+import java.util.List;
 
 public class ServerThread extends Thread {
     private Socket socket;
@@ -15,11 +16,13 @@ public class ServerThread extends Thread {
     public String nombre_socket;
     public ArrayList<String> lista_mandar;
     public String estado = "";
+    public ArrayList<Thread> lista_hilos_funciones;
 
-    public ServerThread(Socket socket, ArrayList<ServerThread> threads, MarcoServidor mimarco) {
+    public ServerThread(Socket socket, ArrayList<ServerThread> threads, MarcoServidor mimarco, ArrayList<Thread> lista_hilos_funciones) {
         this.socket = socket;
         this.threadList = threads;
         this.mimarco = mimarco;
+        this.lista_hilos_funciones = lista_hilos_funciones;
     }
 
     @Override

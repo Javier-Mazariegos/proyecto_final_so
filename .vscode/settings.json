@@ -1,0 +1,8 @@
+{
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "D:\\estructura\\praactica2\\libjunit-platform-console-standalone-1.7.0-all.jar",
+        "c:\\Program Files\\Tableau\\Drivers\\postgresql-42.6.0.jar",
+        "server/postgresql-42.6.0.jar"
+    ]
+}
