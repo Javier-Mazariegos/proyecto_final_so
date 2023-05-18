@@ -26,7 +26,8 @@ public class ServerThread extends Thread {
     public Base_datos bd_postgres;
     public Connection conexion;
 
-    public ServerThread(Socket socket, ArrayList<ServerThread> threads, MarcoServidor mimarco, ExecutorService ex, Base_datos bd_postgres, Connection conexion) {
+    public ServerThread(Socket socket, ArrayList<ServerThread> threads, MarcoServidor mimarco, ExecutorService ex,
+            Base_datos bd_postgres, Connection conexion) {
         this.socket = socket;
         this.threadList = threads;
         this.mimarco = mimarco;
@@ -51,7 +52,8 @@ public class ServerThread extends Thread {
             while (true) {
 
                 paquete_recibido = (PaqueteEnvio) input.readObject();
-                List<Double> resultados = new ArrayList<>();;
+                List<Double> resultados = new ArrayList<>();
+                ;
                 String mensaje = paquete_recibido.getMensaje();
                 String nick = paquete_recibido.getNick();
                 String ip_destino = paquete_recibido.getIp();
@@ -69,19 +71,19 @@ public class ServerThread extends Thread {
                     Boolean uno = mensaje.contains(",");
                     String[] parts = new String[2];
 
-                    if(uno){
+                    if (uno) {
                         parts = mensaje.split(",");
                         mensaje = parts[0];
                     }
 
-                    if (mensaje.equals("std")){
+                    if (mensaje.equals("std")) {
                         Mis_hilos hilo_ = new Mis_hilos();
                         hilo_.set_funcion("std", bd_postgres, conexion);
                         hilo_.set_resultado(resultados);
-                        if(uno){
+                        if (uno) {
                             hilo_.set_numero(Integer.parseInt(parts[1]));
                         }
-                        
+
                         Future<?> future = ex.submit(hilo_);
                         try {
                             future.get();
@@ -89,12 +91,11 @@ public class ServerThread extends Thread {
                             // Maneja las excepciones si es necesario
                         }
 
-
                     } else if (mensaje.equals("min")) {
                         Mis_hilos hilo_ = new Mis_hilos();
                         hilo_.set_funcion("min", bd_postgres, conexion);
                         hilo_.set_resultado(resultados);
-                        if(uno){
+                        if (uno) {
                             hilo_.set_numero(Integer.parseInt(parts[1]));
                         }
 
@@ -108,7 +109,7 @@ public class ServerThread extends Thread {
                         Mis_hilos hilo_ = new Mis_hilos();
                         hilo_.set_funcion("max", bd_postgres, conexion);
                         hilo_.set_resultado(resultados);
-                        if(uno){
+                        if (uno) {
                             hilo_.set_numero(Integer.parseInt(parts[1]));
                         }
                         Future<?> future = ex.submit(hilo_);
@@ -121,7 +122,7 @@ public class ServerThread extends Thread {
                         Mis_hilos hilo_ = new Mis_hilos();
                         hilo_.set_funcion("count", bd_postgres, conexion);
                         hilo_.set_resultado(resultados);
-                        if(uno){
+                        if (uno) {
                             hilo_.set_numero(Integer.parseInt(parts[1]));
                         }
                         Future<?> future = ex.submit(hilo_);
@@ -134,7 +135,7 @@ public class ServerThread extends Thread {
                         Mis_hilos hilo_ = new Mis_hilos();
                         hilo_.set_funcion("mean", bd_postgres, conexion);
                         hilo_.set_resultado(resultados);
-                        if(uno){
+                        if (uno) {
                             hilo_.set_numero(Integer.parseInt(parts[1]));
                         }
                         Future<?> future = ex.submit(hilo_);
@@ -144,23 +145,41 @@ public class ServerThread extends Thread {
                             // Maneja las excepciones si es necesario
                         }
                     }
-                    
+
                     mimarco.areatexto.append("\n" + nick + ": pidió: " + mensaje);
                     paquete_enviar = new PaqueteEnvio();
-                    paquete_enviar.setMensaje(Double.toString((resultados.get(0))));
+                    // paquete_enviar.setMensaje(Double.toString((resultados.get(0))));
+
+                    StringBuilder mensaje_ = new StringBuilder();
+                    if (resultados.size() == 1) {
+                        paquete_enviar.setMensaje(Double.toString((resultados.get(0))));
+                    } else {
+                        for (int i = 0; i < resultados.size(); i++) {
+                            double resultado = resultados.get(i);
+                            mensaje_.append(i + 1).append(": ").append(Double.toString(resultado));
+
+                            if (i < resultados.size() - 1) {
+                                mensaje_.append(",");
+                            }
+                        }
+                        paquete_enviar.setMensaje(mensaje_.toString());
+                    }
+
                     paquete_enviar.setNick("Servidor: ");
-                    //paquete_recibido.setMensaje(Double.toString((resultados.get(0))));
+                    // paquete_recibido.setMensaje(Double.toString((resultados.get(0))));
                     output.writeObject(paquete_enviar);
-                    //mimarco.areatexto.append("\n" + nick + ": " + mensaje + " para " + ip_destino);
+                    // mimarco.areatexto.append("\n" + nick + ": " + mensaje + " para " +
+                    // ip_destino);
                     // for (ServerThread hilos : threadList) {
-                    //     String nombre_enviar = hilos.nombre_socket;
-                    //     // InetAddress ip_socket = hilos.socket.getInetAddress();
-                    //     // System.out.println("Un elemento de la lista: " + ip_socket.getHostAddress());
-                    //     if (ip_destino.trim().equals(nombre_enviar.trim())) {
-                    //         // System.out.println("Si se parecen");
-                    //         // hilos.output.writeUTF( "El servidor contestó esto: " + mensaje);
-                    //         hilos.output.writeObject(paquete_recibido);
-                    //     }
+                    // String nombre_enviar = hilos.nombre_socket;
+                    // // InetAddress ip_socket = hilos.socket.getInetAddress();
+                    // // System.out.println("Un elemento de la lista: " +
+                    // ip_socket.getHostAddress());
+                    // if (ip_destino.trim().equals(nombre_enviar.trim())) {
+                    // // System.out.println("Si se parecen");
+                    // // hilos.output.writeUTF( "El servidor contestó esto: " + mensaje);
+                    // hilos.output.writeObject(paquete_recibido);
+                    // }
                     // }
                 } else {
                     nombre_socket = nick;

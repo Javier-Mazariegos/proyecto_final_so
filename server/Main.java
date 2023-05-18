@@ -179,7 +179,8 @@ class Base_datos {
     public String tabla_truncate(Connection conectar) throws SQLException {
         PreparedStatement statement = conectar.prepareStatement("TRUNCATE public.SOLICITUD ");
         try {
-            return (String.valueOf(statement.execute()));
+            statement.execute();
+            return ("BD limpia.");//String.valueOf(statement.execute()));
         } finally {
             statement.close();
         }
