@@ -9,6 +9,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.List;
 import java.sql.Connection;
 import java.util.concurrent.Future;
+import org.apache.commons.lang3.StringUtils;
 
 public class ServerThread extends Thread {
     private Socket socket;
@@ -44,6 +45,7 @@ public class ServerThread extends Thread {
             // Esto es lo que nos está enviando el cliente
             ObjectInputStream input = new ObjectInputStream(this.socket.getInputStream());
 
+
             // Esto es lo que le vamos a enviar al cliente
             output = new ObjectOutputStream(socket.getOutputStream());
             output.flush();
@@ -73,8 +75,31 @@ public class ServerThread extends Thread {
 
                     if (uno) {
                         parts = mensaje.split(",");
-                        mensaje = parts[0];
+
+                        try{
+                        if(((Integer.valueOf(parts[1])) >= 0 && Integer.valueOf(parts[1]) < 1000) && (parts[0].equals("std") ||  parts[0].equals("min") ||  parts[0].equals("max") ||  parts[0].equals("count") 
+                        ||  parts[0].equals("mean"))){
+                            mimarco.areatexto.append("\n" + nick + ": pidió: " + mensaje);
+                            mensaje = parts[0];
+                        }
+                        }
+                        catch (NumberFormatException e){
+                            mimarco.areatexto.append("\n" + nick + ": " + mensaje + " para " + ip_destino);
+                        }
+
+                        
                     }
+                    else{
+                        if((mensaje.equals("std") || mensaje.equals("min") ||  mensaje.equals("max") ||  mensaje.equals("count") 
+                        ||  mensaje.equals("mean"))){
+                            mimarco.areatexto.append("\n" + nick + ": pidió: " + mensaje);
+                        }
+                        else{
+                            mimarco.areatexto.append("\n" + nick + ": " + mensaje + " para " + ip_destino);
+                        }
+                    }
+
+                    
 
                     if (mensaje.equals("std")) {
                         Mis_hilos hilo_ = new Mis_hilos();
@@ -150,7 +175,6 @@ public class ServerThread extends Thread {
                     }
 
                     if (!m) {
-                        mimarco.areatexto.append("\n" + nick + ": pidió: " + mensaje);
                         paquete_enviar = new PaqueteEnvio();
                         // paquete_enviar.setMensaje(Double.toString((resultados.get(0))));
 
@@ -174,7 +198,7 @@ public class ServerThread extends Thread {
                         output.writeObject(paquete_enviar);
 
                     } else {
-                        mimarco.areatexto.append("\n" + nick + ": " + mensaje + " para " + ip_destino);
+                
                         for (ServerThread hilos : threadList) {
                             String nombre_enviar = hilos.nombre_socket;
                             if (ip_destino.trim().equals(nombre_enviar.trim())) {
