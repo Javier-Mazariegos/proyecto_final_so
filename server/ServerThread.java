@@ -31,7 +31,6 @@ public class ServerThread extends Thread {
         this.socket = socket;
         this.threadList = threads;
         this.mimarco = mimarco;
-        this.tasks_ = tasks_;
         this.ex = ex;
         this.bd_postgres = bd_postgres;
         this.conexion = conexion;
@@ -70,6 +69,7 @@ public class ServerThread extends Thread {
 
                     Boolean uno = mensaje.contains(",");
                     String[] parts = new String[2];
+                    Boolean m = false;
 
                     if (uno) {
                         parts = mensaje.split(",");
@@ -144,30 +144,44 @@ public class ServerThread extends Thread {
                         } catch (InterruptedException | ExecutionException e) {
                             // Maneja las excepciones si es necesario
                         }
+                    } else {
+                        //System.out.println("Mensaje.");
+                        m = true;
                     }
 
-                    mimarco.areatexto.append("\n" + nick + ": pidió: " + mensaje);
-                    paquete_enviar = new PaqueteEnvio();
-                    // paquete_enviar.setMensaje(Double.toString((resultados.get(0))));
+                    if (!m) {
+                        mimarco.areatexto.append("\n" + nick + ": pidió: " + mensaje);
+                        paquete_enviar = new PaqueteEnvio();
+                        // paquete_enviar.setMensaje(Double.toString((resultados.get(0))));
 
-                    StringBuilder mensaje_ = new StringBuilder();
-                    if (resultados.size() == 1) {
-                        paquete_enviar.setMensaje(Double.toString((resultados.get(0))));
+                        StringBuilder mensaje_ = new StringBuilder();
+                        if (resultados.size() == 1) {
+                            paquete_enviar.setMensaje(Double.toString((resultados.get(0))));
+                        } else {
+                            for (int i = 0; i < resultados.size(); i++) {
+                                double resultado = resultados.get(i);
+                                mensaje_.append(i + 1).append(": ").append(Double.toString(resultado));
+
+                                if (i < resultados.size() - 1) {
+                                    mensaje_.append(",");
+                                }
+                            }
+                            paquete_enviar.setMensaje(mensaje_.toString());
+                        }
+
+                        paquete_enviar.setNick("Servidor: ");
+                        // paquete_recibido.setMensaje(Double.toString((resultados.get(0))));
+                        output.writeObject(paquete_enviar);
+
                     } else {
-                        for (int i = 0; i < resultados.size(); i++) {
-                            double resultado = resultados.get(i);
-                            mensaje_.append(i + 1).append(": ").append(Double.toString(resultado));
-
-                            if (i < resultados.size() - 1) {
-                                mensaje_.append(",");
+                        mimarco.areatexto.append("\n" + nick + ": " + mensaje + " para " + ip_destino);
+                        for (ServerThread hilos : threadList) {
+                            String nombre_enviar = hilos.nombre_socket;
+                            if (ip_destino.trim().equals(nombre_enviar.trim())) {
+                                hilos.output.writeObject(paquete_recibido);
                             }
                         }
-                        paquete_enviar.setMensaje(mensaje_.toString());
                     }
-
-                    paquete_enviar.setNick("Servidor: ");
-                    // paquete_recibido.setMensaje(Double.toString((resultados.get(0))));
-                    output.writeObject(paquete_enviar);
                     // mimarco.areatexto.append("\n" + nick + ": " + mensaje + " para " +
                     // ip_destino);
                     // for (ServerThread hilos : threadList) {
