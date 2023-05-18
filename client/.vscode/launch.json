@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Main",
+            "request": "launch",
+            "mainClass": "Main",
+            "projectName": "client_83c59794"
+        },
+        {
+            "type": "OctaveDebugger",
+            "request": "launch",
+            "name": "proyecto2",
+            "program": "proyecto2",
+            "octave": "C:\\Program Files\\GNU Octave\\Octave-6.2.0\\mingw64\\bin",
+            "sourceFolder": "${workspaceFolder}",
+            "autoTerminate": true
+        }
+    ]
+}

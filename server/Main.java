@@ -22,6 +22,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.stream.DoubleStream;
+import java.util.concurrent.locks.*;
 
 public class Main {
 
@@ -83,7 +84,6 @@ public class Main {
                 Base_datos bd_postgres = new Base_datos();
                 Connection conexion = bd_postgres.conectar();
                 mimarco.areatexto.append(bd_postgres.tabla_truncate(conexion));
-
                 // Creación de hilos
                 /* Integer num_hilos = Integer.valueOf(numero_hilos.getText());
                 for (Integer indice1 = 0; indice1 < num_hilos; indice1++) {
@@ -100,19 +100,19 @@ public class Main {
 
                 // Prueba con threadpool
                 ExecutorService ex = Executors.newFixedThreadPool(hilos_funciones);
-                List<Runnable> tasks_ = new ArrayList<>();
-                List<String> funciones = new ArrayList<>();
-                funciones.add("std");
-                funciones.add("min");
-                funciones.add("max");
-                funciones.add("count");
-                funciones.add("mean");
+                // List<Mis_hilos> tasks_ = new ArrayList<>();
+                // List<String> funciones = new ArrayList<>();
+                // funciones.add("std");
+                // funciones.add("min");
+                // funciones.add("max");
+                // funciones.add("count");
+                // funciones.add("mean");
 
-                for (int i = 0; i < 5; i++) {
-                    Mis_hilos hilo_ = new Mis_hilos();
-                    hilo_.set_funcion(funciones.get(i), bd_postgres, conexion);
-                    tasks_.add(hilo_);
-                }
+                // for (int i = 0; i < 5; i++) {
+                //     Mis_hilos hilo_ = new Mis_hilos();
+                //     hilo_.set_funcion(funciones.get(i), bd_postgres, conexion);
+                //     tasks_.add(hilo_);
+                // }
 
                 /* for (int i=0; i< tasks_.size(); i++) {
                     ex.execute(tasks_.get(i));
@@ -122,8 +122,7 @@ public class Main {
 
                 while (true) {
                     Socket socket = serversocket.accept();
-                    System.out.println("el cliente llego!");
-                    ServerThread serverThread = new ServerThread(socket, threadList, mimarco, tasks_, ex);
+                    ServerThread serverThread = new ServerThread(socket, threadList, mimarco, ex, bd_postgres, conexion);
                     // starting the thread
                     threadList.add(serverThread);
                     serverThread.start();
@@ -187,51 +186,62 @@ class Base_datos {
     }
 
     public void tabla_access(Connection conectar, int file,  String columna, double valor) throws SQLException {
-        if (columna.equals("std")){
-            columna = "stdvalue";
-        } else if (columna.equals("min")){
-            columna = "minvalue";
-        } else if (columna.equals("max")){
-            columna = "maxvalue";
-        } else if (columna.equals("count")){
-            columna = "countvalue";
-        } else if (columna.equals("mean")){
-            columna = "meanvalue";
-        }
 
-        // select
-        String query = "SELECT file FROM public.SOLICITUD WHERE file = ?";
-        Boolean existe;
-        
-        try (PreparedStatement statement = conectar.prepareStatement(query)) {
-            statement.setInt(1, file);
+        escritura_bd.lock();
+
+        try{
+            if (columna.equals("std")){
+                columna = "stdvalue";
+            } else if (columna.equals("min")){
+                columna = "minvalue";
+            } else if (columna.equals("max")){
+                columna = "maxvalue";
+            } else if (columna.equals("count")){
+                columna = "countvalue";
+            } else if (columna.equals("mean")){
+                columna = "meanvalue";
+            }
+
+            // select
+            String query = "SELECT file FROM public.SOLICITUD WHERE file = ?";
+            Boolean existe;
             
-            try (ResultSet resultSet = statement.executeQuery()) {
-                existe = resultSet.next(); // True si hay resultado, falso si no existe
-            }
-        }
-
-        // Update o insert
-        if (existe) {
-            query = "UPDATE public.SOLICITUD SET " + columna + " = ?, functions_processed = functions_processed + 1 WHERE file = ?";
-        
-            try (PreparedStatement statement = conectar.prepareStatement(query)) {
-                statement.setDouble(1, valor);
-                statement.setInt(2, file);
-                statement.executeUpdate();
-            }
-        } else {
-            query = "INSERT INTO public.SOLICITUD (file, " + columna +", functions_processed) VALUES (?, ?, 1)";
-    
             try (PreparedStatement statement = conectar.prepareStatement(query)) {
                 statement.setInt(1, file);
-                statement.setDouble(2, valor);
                 
-                String.valueOf(statement.executeUpdate());
+                try (ResultSet resultSet = statement.executeQuery()) {
+                    existe = resultSet.next(); // True si hay resultado, falso si no existe
+                }
+            }
+
+            // Update o insert
+            if (existe) {
+                query = "UPDATE public.SOLICITUD SET " + columna + " = ?, functions_processed = functions_processed + 1 WHERE file = ?";
+            
+                try (PreparedStatement statement = conectar.prepareStatement(query)) {
+                    statement.setDouble(1, valor);
+                    statement.setInt(2, file);
+                    statement.executeUpdate();
+                }
+            } else {
+                query = "INSERT INTO public.SOLICITUD (file, " + columna +", functions_processed) VALUES (?, ?, 1)";
+        
+                try (PreparedStatement statement = conectar.prepareStatement(query)) {
+                    statement.setInt(1, file);
+                    statement.setDouble(2, valor);
+                    
+                    String.valueOf(statement.executeUpdate());
+            }
+            }
+        
+        } finally{
+            escritura_bd.unlock();
         }
-        }
-       
     }
+
+
+
+    private Lock escritura_bd = new ReentrantLock();
 
 }
 
@@ -240,6 +250,8 @@ class Mis_hilos extends Thread {
     String nombre;
     Base_datos bd_postgres;
     Connection conexion;
+    Integer no_archivos = 0;
+    List<Double> resultados;
 
     public void set_funcion(String nombre, Base_datos bd_postgres, Connection conexion) {
         this.nombre = nombre;
@@ -247,14 +259,27 @@ class Mis_hilos extends Thread {
         this.conexion = conexion;
     }
 
-    public void run() {
+    public void set_numero(Integer no_archivos){
+        this.no_archivos = no_archivos;
+    }
 
-        List<Double> resultados = new ArrayList<>();
+    public void set_resultado(List<Double> resultados){
+        this.resultados = resultados;
+    }
+
+    public void run() {
         List<Double> listaOpen;
 
         // limitando cantidad de archivos para pruebas
-        for (int indice_archivo = 1; indice_archivo <= 10; indice_archivo++) {
-            String archivo = "archivos/index_data_" + indice_archivo + ".csv";
+        for (int indice_archivo = 1; indice_archivo <= 999; indice_archivo++) {
+            String archivo;
+            if(this.no_archivos != 0){
+                archivo = "archivos/index_data_" + this.no_archivos + ".csv";
+            }
+            else{
+                archivo = "archivos/index_data_" + indice_archivo + ".csv";
+            }
+            
 
             try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
 
@@ -273,10 +298,10 @@ class Mis_hilos extends Thread {
                     DoubleStream filas = listaOpen.stream().mapToDouble(val -> val);
                     double average_open = filas.average().getAsDouble();
                     filas = listaOpen.stream().mapToDouble(val -> val);
-                    resultados
+                    this.resultados
                             .add(Math.sqrt(filas.map(num -> Math.pow(num - average_open, 2)).average().getAsDouble()));
                 } else if (this.nombre == "min") {
-                    resultados.add(listaOpen.stream().mapToDouble(val -> val).min().orElse(0.0));
+                    this.resultados.add(listaOpen.stream().mapToDouble(val -> val).min().orElse(0.0));
                 } else if (this.nombre == "max") {
                     resultados.add(listaOpen.stream().mapToDouble(val -> val).max().orElse(0.0));
                 } else if (this.nombre == "count") {
@@ -294,8 +319,13 @@ class Mis_hilos extends Thread {
                     } else {
                         bd_postgres.tabla_inserts(conexion, indice_archivo, this.nombre, resultados.get(0)); 
                     } */
-
-                    bd_postgres.tabla_access(conexion, indice_archivo, this.nombre, resultados.get(0));
+                    if(this.no_archivos != 0){
+                        bd_postgres.tabla_access(conexion, this.no_archivos, this.nombre, resultados.get(0));
+                    }
+                    else{
+                        bd_postgres.tabla_access(conexion, indice_archivo, this.nombre, resultados.get(0));
+                    }
+                    
 
                 } catch (SQLException e) {
                     System.err.println("Error al insertar en la base de datos: " + e.getMessage());
@@ -304,8 +334,13 @@ class Mis_hilos extends Thread {
             } catch (IOException e) {
                 System.err.println("Error al imprimir el archivo " + archivo + ": " + e.getMessage());
             }
+            
+            if(this.no_archivos != 0){
+                break;
+            }
         }
 
+        this.no_archivos =0;
     }
 
 }

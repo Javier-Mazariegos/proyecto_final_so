@@ -41,9 +41,7 @@ public class ClientRunnable implements Runnable {
 
                             mimarco.milamina.ip.removeAllItems();
                             for(String it: paquete_recibido.getLista()){
-                                if(!it.trim().equals(mi_nombre.trim())){
                                     mimarco.milamina.ip.addItem(it);
-                                }
                                 
                             }
                             
